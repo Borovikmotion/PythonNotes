@@ -1,0 +1,24 @@
+FBX 
+
+Узнать какие опции есть у FBX
+import maya.mel as mel
+mel.eval('FBXProperties;')
+Указать значения опций FBX и выполнить export 
+
+import maya.cmds as cmds
+
+property1 = "Export|IncludeGrp|Geometry|SmoothMesh"
+property1_val = "1"
+
+property2 = "Export|IncludeGrp|Animation|BakeComplexAnimation|bakeFrameStart"
+property2_val = "1001"
+
+property3 = "Export|IncludeGrp|Animation|BakeComplexAnimation|bakeFrameEnd"
+property3_val = "1024"
+
+mel.eval('FBXProperty {0} -v {1}'.format(property1, property1_val))
+mel.eval('FBXProperty {0} -v {1}'.format(property2, property2_val))
+mel.eval('FBXProperty {0} -v {1}'.format(property3, property3_val))
+
+outputFile = "D:/dev/scene.fbx"
+mel.eval('FBXExport -f "{0}" -s'.format(outputFile))

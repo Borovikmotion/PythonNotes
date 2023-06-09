@@ -1,0 +1,2 @@
+# self.setWindowTitle("My Tool Set")
+self.setTitleBarWidget(QtWidgets.QWidget()) # No original title bar

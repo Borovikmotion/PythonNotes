@@ -1,0 +1,33 @@
+from PySide2 import QtWidgets, QtGui, QtCore # PyQt6
+import sys
+
+class DebugWindow(QtWidgets.QDialog):
+    def __init__(self):
+        super(DebugWindow, self).__init__()
+
+        self.setFixedSize(500,500)
+        self.setObjectName("MyDebugDialogID")
+
+        self.layoutMain = QtWidgets.QVBoxLayout()
+        self.setLayout(self.layoutMain)
+
+        self.btn = QtWidgets.QPushButton("Print")
+        self.layoutMain.addWidget(self.btn)
+
+        self.txt = QtWidgets.QTextEdit()
+        self.layoutMain.addWidget(self.txt)
+
+
+        self.btn.clicked.connect(self.do)
+
+    def do(self):
+        self.txt.setText("HOHOHOHOHOHOH")
+
+def main():
+    app = QtWidgets.QApplication(sys.argv)
+    w = DebugWindow()
+    w.show()
+    sys.exit(app.exec_()) # in PyQt6  sys.exit(app.exec())
+
+if __name__ == "__main__":
+    main()

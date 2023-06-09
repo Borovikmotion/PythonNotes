@@ -1,0 +1,49 @@
+Пример скрипта - если добавить его в отдельный файл и кинуть во viewport - он создаст отдельную полку и добавит иконку запускуа какого-то проекта. (Поменяйте путь к иконке чтобы все правильно отображалось)
+
+import os
+import shutil
+import maya.cmds as cmds
+import maya.mel as mel
+
+DIR_  = os.path.dirname(os.path.abspath(__file__))
+
+def modify_maya_env():
+    # Should we do it ?
+    pass
+
+def load_and_run_client():
+    print("TEST")
+
+
+shelf_toolLib_cmd = ("""
+import GN.GraphN_Tools_Library.main
+reload(GN.GraphN_Tools_Library.main)
+GN.GraphN_Tools_Library.main.main()
+"""
+)
+
+def shelf(name="GraphNTools"):
+
+    # get top shelf
+    gShelfTopLevel = mel.eval("$tmpVar=$gShelfTopLevel")
+
+    # get top shelf names
+    shelves = cmds.tabLayout(gShelfTopLevel, query=1, ca=1)
+    
+    # delete shelf if it exists
+    if name in shelves:
+        print(">> Removing old GraphNTools shelf before creating a new one!")
+        cmds.deleteUI(name)
+
+    # create shelf
+    cmds.shelfLayout(name, parent=gShelfTopLevel)
+    
+    # let's add some test button on it
+    cmds.shelfButton(image1=os.path.join(DIR_, "res", "file.svg"), command=shelf_toolLib_cmd, parent=name)
+
+
+
+def onMayaDroppedPythonFile(*args):
+    shelf()
+    load_and_run_client()
+    print(">> GraphN Maya module installation completed!")

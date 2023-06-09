@@ -1,0 +1,7 @@
+from subprocess import Popen, PIPE
+
+cmd = "ver "
+p = subprocess.Popen(cmd, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.PIPE, shell = True)
+results = p.communicate()[0]
+
+print(results)

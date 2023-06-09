@@ -1,0 +1,28 @@
+{
+    "A_Zmb_Fat_Explosion_Back": [
+        true
+    ], 
+    "A_Zmb_Fat_Explosion_Front": [
+        false, 
+        "ik_foot_root translateY 212.323326209 Mismatch"
+    ], 
+    "A_Zmb_Fat_Idle_Agro": [
+        true
+    ], 
+    "A_Zmb_Fat_Turn_Agro_L45": [
+        false, 
+        "pelvis translateX 5.00058399105 Mismatch", 
+        "pelvis translateY 24.9974323071 Mismatch", 
+        "ik_hand_gun translateX 5.03601645863 Mismatch", 
+        "ik_hand_gun translateY 24.8477336556 Mismatch"
+    ], 
+    "A_Zmb_Fat_Turn_Agro_L90": [
+        true
+    ], 
+    "A_Zmb_Fat_Turn_Agro_R135": [
+        true
+    ], 
+    "A_Zmb_Fat_Turn_Agro_R90": [
+        true
+    ]
+}

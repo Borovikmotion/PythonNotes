@@ -1,0 +1,16 @@
+# clean up
+if self.buttonsLayout.count():
+    for i in range(self.buttonsLayout.count()):
+        item = self.buttonsLayout.itemAt(i)
+        if isinstance(item, QtWidgets.QSpacerItem):
+            self.buttonsLayout.removeItem(item)
+            continue
+        widget = item.widget()
+        if widget:
+            widget.deleteLater()
+
+for i in ["toolA", "toolB"]:
+    btn = WidgetButton(label=i)
+    self.buttonsLayout.addWidget(btn)
+
+self.buttonsLayout.addStretch()

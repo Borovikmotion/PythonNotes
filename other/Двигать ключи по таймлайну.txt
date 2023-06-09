@@ -1,0 +1,27 @@
+#get timeline Start frame and End frame
+startTime = cmds.playbackOptions(query = True, minTime = True)
+endTime = cmds.playbackOptions(query = True, maxTime = True)
+
+obj = cmds.ls(sl=1, l=1)[0]
+keys = cmds.keyframe(obj + ".translateX", q=1, tc=1)
+
+x = {}
+prev = None
+block = 0
+for i in keys:
+    if prev and (i - prev) >= 3:
+        block += 1
+    
+    if ("block_" + str(block)) in x:
+        x["block_" + str(block)].append(i)
+    else:
+        x["block_" + str(block)] = [i]
+        
+    prev = i
+    
+
+# offset animation chunks
+offset = x["block_1"][0] - x["block_0"][-1] - 1
+direction = -1
+for i in x["block_1"]:
+    cmds.keyframe(obj + ".translateX", o="over", iub=True, r=1, e=1, t=(i, i+1), tc=offset * direction)

@@ -1,0 +1,23 @@
+import maya.cmds as cmds
+import os
+
+extensionMap = {'mb':'mayaBinary', 'ma':'mayaAscii'}
+
+# get scene full path
+scenePath = cmds.file(q=1, sn=1)
+
+# get folder path
+folderPath = os.path.dirname(scenePath)
+
+# get file name
+fileName, fileExtension = os.path.basename(scenePath).split(".")
+
+# get save path
+basicFilter = "Maya ASCII (*.ma);;Maya Binary (*.mb)"
+savePath = cmds.fileDialog2(fileMode=0, fileFilter=basicFilter, okCaption="Save As", dir=folderPath)
+
+if savePath:
+    saveExtension = os.path.basename(savePath[0]).split(".")[-1]
+    
+    cmds.file(rename=savePath[0])
+    cmds.file(save=True, force=True, type=extensionMap[saveExtension])

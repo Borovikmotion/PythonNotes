@@ -1,0 +1,293 @@
+
+
+global proc lockKeyableAttrs(string $object, int $animControl){
+    /*
+    Lock all keyable attributes (displayed in Channel Box)
+    [attr] $object - gives this function an object to delete all keyable attributes from it 
+    [attr] $animControl - if true, keeps translate and rotate attributes unlocked and keyable
+    */
+
+    //get all keyable attributes. 
+    //listAttr returns array of strings
+    string $keyable_attrs[] = `listAttr -k $object`; 
+
+    for($attr in $keyable_attrs)
+    {
+
+        if($animControl == 1 && (`match "rotate" $attr` == "rotate" || `match "translate" $attr` == "translate")){
+            continue;
+        }
+
+        setAttr -k false ($object + "." + $attr);
+
+        if($attr == "visibility"){
+            continue;
+        }
+
+        setAttr -lock true ($object + "." + $attr);
+    }
+}
+
+
+global proc createMasterNodes(){
+    /*
+    Create basic scene hierarchy |scene_master|prop_master
+    prop_master - is a group where all our rigs will be parented
+    */
+
+    //if "scene_master" group doesn't exists in our Maya scene ( ! means NOT )
+    if(!`objExists scene_master`){
+
+        //create group and lock it's attributes
+        string $scene_master = `group -n scene_master -em`; 
+        lockKeyableAttrs($scene_master, 0);
+    }
+
+    if(!`objExists prop_master`) {
+        string $prop_master = `group -n prop_master -em -p scene_master`; 
+        lockKeyableAttrs($prop_master, 0);
+    }
+}
+
+
+global proc createRigDisplayLayer(string $rig){
+    /*
+    Creates a Display Layer and adds $rig to this layer
+    [attr] $rig - current rig which we pass in to this function
+    */
+
+    string $layerName = $rig + "_DL";
+
+    createDisplayLayer -name $layerName; //create a layer
+
+    editDisplayLayerMembers $layerName $rig; //add a rig to it
+}
+
+
+global proc createRig()
+{
+
+    //we should create global variables again so we could access their values
+    global string $checkBox_layer;
+    global string $checkBox_scene;
+
+    //get selected objects names
+    string $selectedObjects[] = `ls -selection`;
+
+    //here we create rig for each selected object
+    //$obj in this loop is a current object taken from array $selectedObjects
+    for($obj in $selectedObjects){
+
+        //create obj_base_rig group
+        string $base_rig;
+
+        if(`checkBox -q -v $checkBox_scene`){
+
+            //create main scene groups
+            createMasterNodes;
+
+            //parent the rig group to prop_master group
+            $base_rig = `group -name ($obj + "_base_rig") -empty -p prop_master`;
+        }
+        else{
+
+            //create a new group parented to World
+            $base_rig = `group -name ($obj + "_base_rig") -empty`;
+        }
+
+        //Create a display layer and add the rig to taht layer
+        if(`checkBox -q -v $checkBox_layer`){
+            createRigDisplayLayer($base_rig);
+        }
+
+
+        //RIG HIERARCHY
+
+        //create an empty group
+        string $grp_base_model = `group -name ($obj + "_base_model") -empty -parent $base_rig`;
+        lockKeyableAttrs($grp_base_model, 0);
+
+        string $grp_base_motion = `group -name ($obj + "_base_motion") -empty -parent $base_rig`;
+        lockKeyableAttrs($grp_base_motion, 0);
+
+        string $grp_base_vis = `group -name ($obj + "_base_visibility") -empty -parent $grp_base_motion`;
+        lockKeyableAttrs($grp_base_vis, 0);
+
+        string $grp_scene_offset = `group -name ($obj + "_scene_offset") -empty -parent $grp_base_motion`;
+        lockKeyableAttrs($grp_scene_offset, 0);
+
+        //create a NURBS curve controller
+        string $crv_ac_master = `curve -d 1 -p -3 0 -1.5 -p 3 0 -1.5 -p 0 0 4 -p -3 0 -1.5 -n ($obj + "_ac_master")`;
+        parent $crv_ac_master $grp_scene_offset;
+
+        string $grp_ac_master_offset = `group -name ($obj + "_ac_master_offset") -empty -parent $crv_ac_master`;
+        lockKeyableAttrs($grp_ac_master_offset, 1);
+
+        string $crv_ac_pivot = `curve -d 1 -p 0 0 2 -p 0 0 -2 -p 0 0 0 -p -2 0 0 -p 2 0 0 -p 0 0 0 -p 0 2 0 -p 0 -2 0 -n ($obj + "_ac_pivot")`;
+        parent $crv_ac_pivot $grp_ac_master_offset;
+        lockKeyableAttrs($crv_ac_pivot, 1);
+
+        string $grp_ac_pivot_neg = `group -name ($obj + "_ac_pivot_neg") -empty -parent $crv_ac_pivot`;
+
+        string $grp_ac_cog_attr = `group -name ($obj + "_ac_cog_attr") -empty -parent $grp_ac_pivot_neg`;
+        lockKeyableAttrs($grp_ac_cog_attr, 0);
+
+        string $crv_ac_cog = `curve -d 1 -p -2 0 -1 -p 2 0 -1 -p 0 0 3 -p -2 0 -1 -n ($obj + "_ac_cog")`;
+        parent $crv_ac_cog $grp_ac_cog_attr;
+        lockKeyableAttrs($crv_ac_cog, 1);
+
+        string $grp_ac_cog_offset = `group -name ($obj + "_ac_cog_attr") -empty -parent $crv_ac_cog`;
+        lockKeyableAttrs($grp_ac_cog_offset, 1);
+
+
+        //apply object transformations to the rig body controller
+        // save object transforms
+        float $obj_translate[] =  `getAttr ($obj + ".translate")`;
+        float $obj_rotate[] =  `getAttr ($obj + ".rotate")`;
+
+        //zero out object translate
+        setAttr ($obj + ".translate") 0 0 0;
+        setAttr ($obj + ".rotate") 0 0 0;
+
+
+        //RESCALE CONTROLLERS
+        //Large objects should have larger controllers, small objects - smaller controllers
+        //But the main idea is that controllers should be visible and surround the object
+
+        //get current object bounding box information
+        float $objectBB[] = `xform -q -ws -bb $obj`;
+        //get master curve controller bounding box information
+        float $masterCurveBB[] = `xform -q -ws -bb $crv_ac_master`;
+
+        //calculate Z-Length of those objects
+        float $objectBB_zLength = $objectBB[5] - $objectBB[2];
+        float $masterCurveBB_zLength = $masterCurveBB[5] - $masterCurveBB[2];
+
+        //Find the coefficient for scaling controllers
+        float $coeff = ($objectBB_zLength / $masterCurveBB_zLength) * 2;
+
+        //scale curve master (it will also scale all the child controllers)
+        scale -r $coeff $coeff $coeff $crv_ac_master;
+
+        //master controller - lock attributes
+        lockKeyableAttrs($crv_ac_master, 1);
+
+
+        //PLACE THE OBJECT UNDER THE RIG
+
+        //parent the object to the rig_base_model group
+        parent $obj $grp_base_model;
+
+        //apply parent constraint so the rig_ac_cog_offset group could influence the object's translation and rotation
+        parentConstraint  -maintainOffset $grp_ac_cog_offset $obj ;
+
+        //return master controller to the place where the object has been moved and rotated initially
+        setAttr ($crv_ac_master + ".translate") $obj_translate[0] $obj_translate[1] $obj_translate[2];
+        setAttr ($crv_ac_master + ".rotate") $obj_rotate[0] $obj_rotate[1] $obj_rotate[2];
+
+
+        // OBJECT VISIBILITY
+        //Adds an enum attribute with options "Off : On : Body" to  master controller
+        //The idea is:
+        //  Off - rig is visible, object is hidden
+        //  On - rig is visible, object is visible but unselectable
+        //  Edit - rig is visible, object is visible and selectable
+
+        //add enum attr "body" to master controller and rig_base_visibility group
+        addAttr -ln "body"  -at "enum" -en "off:on:edit:" -k 1 $crv_ac_master;
+        addAttr -ln "body"  -at "enum" -en "off:on:edit:" -k 1 $grp_base_vis;
+
+        //set initial attr value = On (rig is visible, object is visible but unselectable)
+        setAttr ($crv_ac_master + ".body") 1;
+        setAttr ($grp_base_vis + ".body") 1;
+
+        //Connect "body" attr of master controller and "body" attr of the visibility group
+        connectAttr -f ($crv_ac_master + ".body") ($grp_base_vis + ".body");
+
+        //create utility nodes (with some initial values) that will give us the way
+        //  to control object's visibility and select mode by our enum attribute
+        string $visibilityUtilMDL = `shadingNode -asUtility multDoubleLinear -n ($obj + "_base_visibility_mdl")`;
+        setAttr ($visibilityUtilMDL + ".input1") 1;
+
+        string $visibilityUtilCND = `shadingNode -asUtility condition -n ($obj + "_base_visibility_cnd")`;
+        setAttr ($visibilityUtilCND + ".colorIfFalseR") 2;
+        setAttr ($visibilityUtilCND + ".secondTerm") 2;
+
+        //connect the visibility group attr "body" with utility nodes
+        connectAttr -f ($grp_base_vis + ".body") ($visibilityUtilMDL + ".input2");
+        connectAttr -f ($grp_base_vis + ".body") ($visibilityUtilCND + ".firstTerm");
+
+        //connect the utility nodes with the rig_base_model group attributes
+        connectAttr -f ($visibilityUtilMDL + ".output") ($grp_base_model + ".overrideEnabled");
+        connectAttr -f ($visibilityUtilMDL + ".output") ($grp_base_model + ".visibility");
+        connectAttr -f ($visibilityUtilCND + ".outColorR") ($grp_base_model + ".overrideDisplayType");
+
+
+
+        //ROTATION PIVOT
+        //It should rotate the offset controller around it - but not translate it
+        //When we move controller - the negative translate values should be applied to the child group
+
+        //create the utility node multiplyDivide
+        string $pivot_MD = `shadingNode -asUtility multiplyDivide -n ($obj + "_pivot_neg_multdiv")`;
+        setAttr ($pivot_MD + ".input2X") -1;
+        setAttr ($pivot_MD + ".input2Y") -1;
+        setAttr ($pivot_MD + ".input2Z") -1;
+
+        //make connections 
+        connectAttr -f ($crv_ac_pivot + ".translateX") ($pivot_MD + ".input1X");
+        connectAttr -f ($crv_ac_pivot + ".translateY") ($pivot_MD + ".input1Y");
+        connectAttr -f ($crv_ac_pivot + ".translateZ") ($pivot_MD + ".input1Z");
+
+        connectAttr -f ($pivot_MD + ".outputX") ($grp_ac_pivot_neg + ".translateX");
+        connectAttr -f ($pivot_MD + ".outputY") ($grp_ac_pivot_neg + ".translateY");
+        connectAttr -f ($pivot_MD + ".outputZ") ($grp_ac_pivot_neg + ".translateZ");
+        lockKeyableAttrs($grp_ac_pivot_neg, 0);
+
+        //final strokes
+        select -d;
+
+    }
+
+}
+
+
+
+global proc quickRig()
+{
+
+    if (`window -exists  quickRigWnd`){
+        deleteUI quickRigWnd;
+    }
+
+    window -title "Quick Rig"  -widthHeight 300 200 quickRigWnd;
+
+    columnLayout mainLayout;
+
+    columnLayout optionsLayout;
+
+    global string $checkBox_layer;
+    global string $checkBox_scene;
+
+    $checkBox_layer = `checkBox -label "Display Layer"`;
+    $checkBox_scene = `checkBox -label "Scene Hierarchy"`;
+
+    setParent..;
+
+    rowLayout   -numberOfColumns 2 -p ("quickRigWnd")
+                -columnWidth2 150 150
+                -columnAlign2 "both" "both"
+                -columnAttach 1 "both" 0
+                -columnAttach 2 "both" 0
+                -h 30
+                buttonsLayout;
+
+    button -l "Create" -c "createRig";
+    button -l "Close" -c "deleteUI quickRigWnd";
+    setParent..;
+
+    showWindow quickRigWnd;
+}
+
+
+quickRig;

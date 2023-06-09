@@ -1,0 +1,18 @@
+{
+    "CurrentTools": [
+        "Tool_J", 
+        "Tool_G", 
+        "Tool_A"
+    ], 
+    "NotUsedTools": [
+        "Tool_K", 
+        "Tool_C", 
+        "Tool_D", 
+        "Tool_B", 
+        "Tool_H", 
+        "Tool_I", 
+        "Tool_E", 
+        "Tool_J", 
+        "Tool_F"
+    ]
+}

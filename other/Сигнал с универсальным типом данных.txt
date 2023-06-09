@@ -1,0 +1,28 @@
+from PySide2 import QtWidgets, QtCore
+
+class ClassA(QtWidgets.QWidget):
+    mySignal = QtCore.Signal(object)
+    
+    def __init__(self):
+        super(ClassA, self).__init__()
+        pass
+        
+    def send_int(self):
+        self.mySignal.emit(123)
+        
+    def send_float(self):
+        self.mySignal.emit(123.456)
+        
+class ClassB(QtWidgets.QWidget):
+    
+    def __init__(self):
+        super(ClassB, self).__init__()
+        self.h = ClassA()
+        self.h.mySignal.connect(self.receiver)
+        
+    def receiver(self, number):
+        print(number)
+        
+x = ClassB()
+x.h.send_int()
+x.h.send_float()
